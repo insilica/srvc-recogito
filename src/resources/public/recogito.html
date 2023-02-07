@@ -93,7 +93,6 @@ h1 {
              doc = currentDocEvents[0]
              title.innerText = doc['data']['title']
              document.getElementById('recogito').innerText = doc['data']['abstract']
-             console.log(el.innerText);
              r = Recogito.init({content:'recogito'});    //init recogito here
              if ( doc['url'] ) {
                  url.innerHTML = '';
