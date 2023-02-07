@@ -62,7 +62,6 @@ h1 {
      var r = null
      var config = null
      var currentDocEvents = null
-     var el = document.getElementById('recogito')
      var mode = "ANNOTATION";
      var submit = document.getElementById('recogito-submit')
      var title = document.getElementById('article-title');
@@ -93,8 +92,9 @@ h1 {
              currentDocEvents = JSON.parse(req.response)
              doc = currentDocEvents[0]
              title.innerText = doc['data']['title']
-             el.innerText = doc['data']['abstract']
-             r = Recogito.init({content:el});    //init recogito here
+             document.getElementById('recogito').innerText = doc['data']['abstract']
+             console.log(el.innerText);
+             r = Recogito.init({content:'recogito'});    //init recogito here
              if ( doc['url'] ) {
                  url.innerHTML = '';
                  let a = document.createElement('a');
@@ -125,10 +125,11 @@ h1 {
              loadCurrentDocEvents()
          })
          req.open("POST", "/submit-label-answers")
-         req.setRequestHeader("Content-Type", "application/json")
+         req.setRequestHeader("Content-Type", "application/json");
+         console.log(config);
          var answer = {"data": {"answer": r.getAnnotations(),
                                 "document": currentDocEvents[0].hash,
-                                "label": config.current_labels[0].hash,
+                                "label": config["current-labels"][0].hash,
                                 "reviewer": config.reviewer,
                                 "timestamp": Math.floor(Date.now() / 1000)},
                        "type": "label-answer"}
