@@ -116,6 +116,8 @@ h1 {
                      }
                  })
              } else {
+                 title.innerText = '';
+                 url.innerText = '';
                  document.getElementById('recogito').innerHTML = "<h2>No more documents.</h2>";
              }
          })
@@ -141,6 +143,8 @@ h1 {
                            "type": "label-answer"}
              req.send(JSON.stringify({"answers": [answer]}))
          } else {
+             title.innerText = '';
+             url.innerText = '';
              document.getElementById('recogito').innerHTML = "<h2>No more documents.</h2>";
          }
      }
