@@ -90,7 +90,6 @@ h1 {
                  r.destroy();
              }
              currentDocEvents = JSON.parse(req.response)
-             console.log(currentDocEvents);
              if (currentDocEvents.length) {
                  doc = currentDocEvents[0]
                  title.innerText = doc['data']['title']
@@ -130,7 +129,6 @@ h1 {
          req.addEventListener("load", function (resp) {
              loadCurrentDocEvents()
          })
-         console.log(currentDocEvents)
          if (currentDocEvents.length) {
              req.open("POST", "/submit-label-answers")
              req.setRequestHeader("Content-Type", "application/json")
