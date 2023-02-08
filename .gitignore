@@ -1,0 +1,9 @@
+.*
+result
+
+!.devcontainer
+!.editorconfig
+!.envrc
+!.github
+!.gitignore
+!.vscode
