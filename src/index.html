@@ -58,101 +58,135 @@ h1 {
     <button id="recogito-submit" type="submit">Submit</button>
 </div>
 <script type="text/javascript">
- (function() {
-     var r = null
-     var config = null
-     var currentDocEvents = null
-     var mode = "ANNOTATION";
-     var submit = document.getElementById('recogito-submit')
-     var title = document.getElementById('article-title');
-     var toggle = document.getElementById('toggle-mode')
-     var url = document.getElementById('article-url');
+(function() {
+    var r = null;
+    var config = null;
+    var currentDocEvents = null;
+    var mode = "ANNOTATION";
+    var submit = document.getElementById('recogito-submit');
+    var title = document.getElementById('article-title');
+    var toggle = document.getElementById('toggle-mode');
+    var url = document.getElementById('article-url');
 
-     toggle.addEventListener("click", function() {
-         mode = (mode == "ANNOTATION") ? "RELATIONS" : "ANNOTATION"
-         r.setMode(mode)
-         text = (mode == "ANNOTATION") ? "Annotation" : "Relations"
-         toggle.innerText = "Mode: " + text
-     })
-     var loadConfig = function () {
-         var req = new XMLHttpRequest()
-         req.addEventListener("load", function (resp) {
-             config = JSON.parse(req.response)
-         })
-         req.open("GET", "/config")
-         req.send()
-     }
+    toggle.addEventListener("click", function() {
+        mode = (mode == "ANNOTATION") ? "RELATIONS" : "ANNOTATION";
+        r.setMode(mode);
+        text = (mode == "ANNOTATION") ? "Annotation" : "Relations";
+        toggle.innerText = "Mode: " + text;
+    });
 
-     var loadCurrentDocEvents = function () {
-         var req = new XMLHttpRequest()
-         req.addEventListener("load", function (resp) {
-             if (r != null) {
-                 r.destroy();
-             }
-             currentDocEvents = JSON.parse(req.response)
-             if (currentDocEvents.length) {
-                 doc = currentDocEvents[0]
-                 title.innerText = doc['data']['title']
-                 document.getElementById('recogito').innerText = doc['data']['abstract']
-                 r = Recogito.init({content:'recogito'});    //init recogito here
-                 if ( doc['url'] ) {
-                     url.innerHTML = '';
-                     let a = document.createElement('a');
-                     a.href = doc['url'];
-                     a.innerText = doc['url'];
-                     a.target = '_blank';
-                     url.appendChild(a);
-                     url.style.display = 'block';
-                 } else {
-                     url.style.dislay = 'none';
-                 }
-                 currentDocEvents.forEach(function (event) {
-                     if ( 'label-answer' == event['type']
-                       && doc['hash'] == event['data']['document']) {
-                         event['data']['answer'].forEach(function (webanno) {
-                             r.addAnnotation(webanno)
-                         })
-                     }
-                 })
-             } else {
-                 title.innerText = '';
-                 url.innerText = '';
-                 document.getElementById('recogito').innerHTML = "<h2>No more documents.</h2>";
-             }
-         })
-         req.open("GET", "/current-doc-events")
-         req.send()
-     }
+    const loadConfig = () => {
+        var req = new XMLHttpRequest();
+        req.addEventListener("load", function (resp) {
+          if (resp.target.status == 404) {
+              // Support srvc v0.13.0 and earlier
+              var req = new XMLHttpRequest();
+              req.addEventListener("load", function (resp) {
+                config = JSON.parse(resp.target.response);
+                loadCurrentDocEvents();
+              });
+              req.open("GET", "/config");
+              req.setRequestHeader("Accept", "application/json");
+              req.send();
+          } else {
+              config = JSON.parse(resp.target.response);
+              loadCurrentDocEvents();
+          }
+        });
+        req.open("GET", "/srvc/config");
+        req.setRequestHeader("Accept", "application/json");
+        req.send();
+    };
 
-     var submitDoc = function() {
-         var req = new XMLHttpRequest()
-         req.addEventListener("load", function (resp) {
-             loadCurrentDocEvents()
-         })
-         if (currentDocEvents.length) {
-             req.open("POST", "/submit-label-answers")
-             req.setRequestHeader("Content-Type", "application/json")
-             var current_labels = config['current-labels'] || config['current_labels'];
-             var answer = {"data": {"answer": r.getAnnotations(),
-                                    "document": currentDocEvents[0].hash,
-                                    "label": current_labels[0].hash,
-                                    "reviewer": config.reviewer,
-                                    "timestamp": Math.floor(Date.now() / 1000)},
-                           "type": "label-answer"}
-             req.send(JSON.stringify({"answers": [answer]}))
-         } else {
-             title.innerText = '';
-             url.innerText = '';
-             document.getElementById('recogito').innerHTML = "<h2>No more documents.</h2>";
-         }
-     }
+    const srvcVersion = async () => {
+        let srvc = (await config)['srvc'];
+        if (srvc) {
+            let [major, minor, patch] = srvc.version.split(".");
+            return [parseInt(major), parseInt(minor), parseInt(patch)];
+        }
+    };
 
-     submit.addEventListener("click", submitDoc)
+    const srvcRequest = async (method, path) => {
+        let req = new XMLHttpRequest();
+        var absPath = path;
+        let [major, minor] = await srvcVersion() || [];
+        if (major && major >= 1 || minor >= 14) {
+            absPath = '/srvc' + path;
+        }
+        req.open(method, absPath);
+        req.setRequestHeader("Accept", "application/json");
+        if (method.toLowerCase() == 'post') {
+          req.setRequestHeader("Content-Type", "application/json");
+        }
+        return req;
+    };
 
-     loadConfig()
-     loadCurrentDocEvents()
+    const loadCurrentDocEvents = async function () {
+        var req = await srvcRequest('GET', '/current-doc-events');
+        req.addEventListener("load", function (resp) {
+            if (r != null) {
+                r.destroy();
+            }
+            currentDocEvents = JSON.parse(req.response);
+            if (currentDocEvents.length) {
+                doc = currentDocEvents[0];
+                title.innerText = doc['data']['title'];
+                document.getElementById('recogito').innerText = doc['data']['abstract'];
+                r = Recogito.init({content:'recogito'});    //init recogito here
+                if ( doc['url'] ) {
+                    url.innerHTML = '';
+                    let a = document.createElement('a');
+                    a.href = doc['url'];
+                    a.innerText = doc['url'];
+                    a.target = '_blank';
+                    url.appendChild(a);
+                    url.style.display = 'block';
+                } else {
+                    url.style.dislay = 'none';
+                }
+                currentDocEvents.forEach(function (event) {
+                    if ( 'label-answer' == event['type']
+                      && doc['hash'] == event['data']['document']) {
+                        event['data']['answer'].forEach(function (webanno) {
+                            r.addAnnotation(webanno);
+                        });
+                    }
+                });
+            } else {
+                title.innerText = '';
+                url.innerText = '';
+                document.getElementById('recogito').innerHTML = "<h2>No more documents.</h2>";
+            }
+        })
+        req.send();
+    }
 
- })();
+    var submitDoc = async function() {
+        if (currentDocEvents.length) {
+            var current_labels = config['current-labels'] || config['current_labels'];
+            var answer = {"data": {"answer": r.getAnnotations(),
+                                  "document": currentDocEvents[0].hash,
+                                  "label": current_labels[0].hash,
+                                  "reviewer": config.reviewer,
+                                  "timestamp": Math.floor(Date.now() / 1000)},
+                          "type": "label-answer"};
+            let req = await srvcRequest('POST', '/submit-label-answers');
+            req.addEventListener("load", function (resp) {
+                loadCurrentDocEvents();
+            });
+            req.send(JSON.stringify({"answers": [answer]}));
+        } else {
+            title.innerText = '';
+            url.innerText = '';
+            document.getElementById('recogito').innerHTML = "<h2>No more documents.</h2>";
+        }
+    }
+
+    submit.addEventListener("click", submitDoc);
+
+    loadConfig();
+
+})();
 </script>
 </body>
 </html>
